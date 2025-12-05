@@ -497,9 +497,16 @@ class MeowClient(discord.Client):
                         }
                     )
                     data = resp.json()
+                    print(f"[查询令牌] 响应: {data}")
                     if resp.status_code == 200 and data.get("success"):
                         tokens_data = data.get("data", {})
-                        tokens = tokens_data.get("data", []) if isinstance(tokens_data, dict) else tokens_data
+                        # 尝试多种数据结构
+                        if isinstance(tokens_data, dict):
+                            tokens = tokens_data.get("data", []) or tokens_data.get("items", [])
+                        elif isinstance(tokens_data, list):
+                            tokens = tokens_data
+                        else:
+                            tokens = []
                         if not tokens:
                             await interaction.followup.send(
                                 f"📭 你还没有 API Key\n\n"
@@ -561,13 +568,17 @@ class MeowClient(discord.Client):
                         }
                     )
                     data = resp.json()
+                    print(f"[创建令牌] 响应: {data}")
                     if resp.status_code == 200 and data.get("success"):
-                        token_key = data.get("data", {}).get("key", "")
+                        token_data = data.get("data", {})
+                        # key 可能在不同位置
+                        token_key = token_data.get("key") or token_data.get("token") or token_data.get("access_token") or ""
                         await interaction.followup.send(
                             f"✅ 令牌创建成功！\n\n"
                             f"📛 名称：**{名称}**\n"
-                            f"🔑 Key：\n```\n{token_key}\n```\n"
-                            f"⚠️ 请妥善保管，此 Key 只显示一次！",
+                            f"🔑 Key：\n```\n{token_key if token_key else '(请在 New API 网站查看)'}\n```\n"
+                            f"⚠️ 请妥善保管！\n\n"
+                            f"📋 调试: {str(token_data)[:200]}",
                             ephemeral=True
                         )
                     else:
