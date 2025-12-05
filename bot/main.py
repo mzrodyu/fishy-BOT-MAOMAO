@@ -508,8 +508,11 @@ class MeowClient(discord.Client):
                         else:
                             all_tokens = []
                         # 过滤属于当前用户的令牌
-                        tokens = [t for t in all_tokens if t.get("user_id") == user_id]
-                        print(f"[查询令牌] 总数: {len(all_tokens)}, 用户令牌: {len(tokens)}")
+                        # user_id 可能是整数或字符串，都要匹配
+                        tokens = [t for t in all_tokens if t.get("user_id") == user_id or str(t.get("user_id")) == str(user_id)]
+                        print(f"[查询令牌] 总数: {len(all_tokens)}, 用户令牌: {len(tokens)}, user_id={user_id}")
+                        if all_tokens:
+                            print(f"[查询令牌] 第一个令牌的 user_id: {all_tokens[0].get('user_id')} (类型: {type(all_tokens[0].get('user_id'))})")
                         if not tokens:
                             await interaction.followup.send(
                                 f"📭 你还没有 API Key\n\n"
