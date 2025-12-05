@@ -16,7 +16,7 @@ subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"
 # 启动后端
 print("🚀 启动后端服务...")
 backend_process = subprocess.Popen(
-    [sys.executable, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"],
+    [sys.executable, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"],
     cwd="backend"
 )
 
@@ -28,7 +28,7 @@ bot_process = subprocess.Popen(
 )
 
 print("✅ 全部启动完成！")
-print("   后端地址: http://0.0.0.0:8001")
+print("   后端地址: http://0.0.0.0:8002")
 
 # 等待进程
 try:
