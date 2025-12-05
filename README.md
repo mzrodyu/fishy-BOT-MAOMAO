@@ -32,8 +32,8 @@ meow-qa-bot/
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/your-username/meow-qa-bot.git
-cd meow-qa-bot
+git clone https://github.com/mzrodyu/fishy-BOT-MAOMAO.git
+cd fishy-BOT-MAOMAO
 ```
 
 ### 2. 配置环境变量
@@ -90,7 +90,7 @@ python main.py
 
 1. 前往 [Google AI Studio](https://aistudio.google.com/)
 2. 创建 API Key
-3. 官方文档：https://ai.google.dev/gemini-api/docs/openai
+3. 官方文档：<https://ai.google.dev/gemini-api/docs/openai>
 
 ## 📖 使用方法
 
