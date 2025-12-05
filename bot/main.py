@@ -441,39 +441,137 @@ class MeowClient(discord.Client):
             except Exception as e:
                 await interaction.followup.send(f"❌ 请求失败: {e}", ephemeral=True)
 
-        # 令牌/Key 命令
-        @self.tree.command(name="令牌", description="查看你的 API Key")
-        async def cmd_token(interaction: discord.Interaction):
-            token = user_tokens.get(str(interaction.user.id))
-            if not token:
-                await interaction.response.send_message("❌ 请先使用 /登录 命令登录", ephemeral=True)
-                return
-            
-            await interaction.response.defer(ephemeral=True)
-            # 获取用户的 API Keys
+        # 获取用户 New API ID 的辅助函数
+        async def get_newapi_user_id(username: str):
+            """通过用户名获取 New API 用户 ID"""
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.get(
-                        f"{NEWAPI_URL.rstrip('/')}/api/token/?p=0&size=10",
-                        headers={"Authorization": f"Bearer {token}"}
+                        f"{NEWAPI_URL.rstrip('/')}/api/user/search",
+                        params={"keyword": username},
+                        headers={
+                            "Authorization": f"{NEWAPI_ADMIN_KEY}",
+                            "New-Api-User": "1"
+                        }
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("success"):
+                            items = data.get("data", {}).get("items", [])
+                            for u in items:
+                                if u.get("username") == username:
+                                    return u.get("id")
+            except:
+                pass
+            return None
+        
+        # 令牌/Key 命令
+        @self.tree.command(name="令牌", description="查看和创建你的 API Key")
+        async def cmd_token(interaction: discord.Interaction):
+            discord_id = str(interaction.user.id)
+            
+            # 检查是否已绑定
+            binding = await check_user_bindng(discord_id)
+            if not binding.get("exists"):
+                await interaction.response.send_message("❌ 你还没有注册账号，请使用 /注册 命令", ephemeral=True)
+                return
+            
+            await interaction.response.defer(ephemeral=True)
+            
+            username = binding["user"]["newapi_username"]
+            # 获取用户的 New API ID
+            user_id = await get_newapi_user_id(username)
+            if not user_id:
+                await interaction.followup.send("❌ 无法获取用户信息", ephemeral=True)
+                return
+            
+            # 获取用户的令牌
+            try:
+                async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
+                    resp = await http.get(
+                        f"{NEWAPI_URL.rstrip('/')}/api/token/",
+                        params={"p": 0, "user_id": user_id},
+                        headers={
+                            "Authorization": f"{NEWAPI_ADMIN_KEY}",
+                            "New-Api-User": str(user_id)
+                        }
                     )
                     data = resp.json()
                     if resp.status_code == 200 and data.get("success"):
-                        tokens = data.get("data", [])
+                        tokens_data = data.get("data", {})
+                        tokens = tokens_data.get("data", []) if isinstance(tokens_data, dict) else tokens_data
                         if not tokens:
-                            await interaction.followup.send("📭 你还没有创建 API Key，请在网页端创建", ephemeral=True)
+                            await interaction.followup.send(
+                                f"📭 你还没有 API Key\n\n"
+                                f"使用 `/创建令牌 名称` 来创建一个！",
+                                ephemeral=True
+                            )
                             return
                         
                         msg = "🔑 **你的 API Keys**\n"
-                        for t in tokens[:5]:  # 最多显示5个
+                        for t in tokens[:5]:
                             name = t.get('name', '未命名')
                             key = t.get('key', '')
                             status = "✅" if t.get('status') == 1 else "❌"
-                            msg += f"\n{status} **{name}**\n`{key}`\n"
+                            quota = t.get('remain_quota', 0)
+                            unlimited = t.get('unlimited_quota', False)
+                            quota_str = "无限" if unlimited else f"${quota / 500000:.4f}"
+                            msg += f"\n{status} **{name}** (额度: {quota_str})\n`{key}`\n"
                         
                         await interaction.followup.send(msg, ephemeral=True)
                     else:
                         await interaction.followup.send(f"❌ {data.get('message', '获取失败')}", ephemeral=True)
+            except Exception as e:
+                await interaction.followup.send(f"❌ 请求失败: {e}", ephemeral=True)
+        
+        # 创建令牌命令
+        @self.tree.command(name="创建令牌", description="创建一个新的 API Key")
+        @app_commands.describe(名称="令牌名称")
+        async def cmd_create_token(interaction: discord.Interaction, 名称: str):
+            discord_id = str(interaction.user.id)
+            
+            # 检查是否已绑定
+            binding = await check_user_bindng(discord_id)
+            if not binding.get("exists"):
+                await interaction.response.send_message("❌ 你还没有注册账号，请使用 /注册 命令", ephemeral=True)
+                return
+            
+            await interaction.response.defer(ephemeral=True)
+            
+            username = binding["user"]["newapi_username"]
+            user_id = await get_newapi_user_id(username)
+            if not user_id:
+                await interaction.followup.send("❌ 无法获取用户信息", ephemeral=True)
+                return
+            
+            # 创建令牌
+            try:
+                async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
+                    resp = await http.post(
+                        f"{NEWAPI_URL.rstrip('/')}/api/token/",
+                        json={
+                            "name": 名称,
+                            "user_id": user_id,
+                            "remain_quota": 0,
+                            "unlimited_quota": True
+                        },
+                        headers={
+                            "Authorization": f"{NEWAPI_ADMIN_KEY}",
+                            "New-Api-User": str(user_id)
+                        }
+                    )
+                    data = resp.json()
+                    if resp.status_code == 200 and data.get("success"):
+                        token_key = data.get("data", {}).get("key", "")
+                        await interaction.followup.send(
+                            f"✅ 令牌创建成功！\n\n"
+                            f"📛 名称：**{名称}**\n"
+                            f"🔑 Key：\n```\n{token_key}\n```\n"
+                            f"⚠️ 请妥善保管，此 Key 只显示一次！",
+                            ephemeral=True
+                        )
+                    else:
+                        await interaction.followup.send(f"❌ {data.get('message', '创建失败')}", ephemeral=True)
             except Exception as e:
                 await interaction.followup.send(f"❌ 请求失败: {e}", ephemeral=True)
 
