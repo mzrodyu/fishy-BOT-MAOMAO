@@ -340,13 +340,33 @@ class MeowClient(discord.Client):
                             "New-Api-User": "1"
                         }
                     )
-                    # 显示详细响应
-                    await interaction.followup.send(
-                        f"📋 **API 响应**\n"
-                        f"状态码: {resp.status_code}\n"
-                        f"```json\n{resp.text[:1500]}\n```",
-                        ephemeral=True
-                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("success"):
+                            # 数据在 data.items 里
+                            items = data.get("data", {}).get("items", [])
+                            user = None
+                            for u in items:
+                                if isinstance(u, dict) and u.get("username") == username:
+                                    user = u
+                                    break
+                            if user:
+                                info = f"""📋 **账号信息**
+👤 用户名：`{user.get('username', 'N/A')}`
+📛 昵称：{user.get('display_name', 'N/A')}
+💰 余额：**${user.get('quota', 0) / 500000:.4f}**
+🎫 已用：${user.get('used_quota', 0) / 500000:.4f}
+📊 请求次数：{user.get('request_count', 0)}
+🎭 角色：{'管理员' if user.get('role') == 100 else '普通用户'}
+📊 状态：{'✅ 正常' if user.get('status') == 1 else '❌ 禁用'}
+"""
+                                await interaction.followup.send(info, ephemeral=True)
+                                return
+                            await interaction.followup.send(f"❌ 未找到用户 (共{len(items)}个结果)", ephemeral=True)
+                            return
+                        await interaction.followup.send(f"❌ {data.get('message', '查询失败')}", ephemeral=True)
+                    else:
+                        await interaction.followup.send(f"❌ HTTP {resp.status_code}", ephemeral=True)
                     return
             except Exception as e:
                 import traceback
@@ -401,15 +421,9 @@ class MeowClient(discord.Client):
                     if resp.status_code == 200:
                         data = resp.json()
                         if data.get("success"):
-                            raw_data = data.get("data")
-                            if isinstance(raw_data, dict):
-                                users = raw_data.get("data", [])
-                            elif isinstance(raw_data, list):
-                                users = raw_data
-                            else:
-                                users = []
+                            items = data.get("data", {}).get("items", [])
                             user = None
-                            for u in users:
+                            for u in items:
                                 if isinstance(u, dict) and u.get("username") == username:
                                     user = u
                                     break
