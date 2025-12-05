@@ -15,6 +15,7 @@ BOT_ID = os.getenv("BOT_ID", "default")
 NEWAPI_URL = os.getenv("NEWAPI_URL", "")  # New API 地址，例如 https://api.example.com
 NEWAPI_ADMIN_KEY = os.getenv("NEWAPI_ADMIN_KEY", "")  # 管理员 API Key（用于注册用户）
 ADMIN_USER_IDS = os.getenv("ADMIN_USER_IDS", "").split(",")  # 管理员 Discord ID 列表
+NEWAPI_VERIFY_SSL = os.getenv("NEWAPI_VERIFY_SSL", "false").lower() == "true"  # 是否验证SSL证书
 
 # 用户消息计数器（用于定期总结）
 user_message_counts = {}
@@ -102,7 +103,7 @@ async def newapi_register(username: str, password: str, display_name: str = ""):
         return {"success": False, "message": "New API 未配置"}
     
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
             resp = await http.post(
                 f"{NEWAPI_URL.rstrip('/')}/api/user/register",
                 json={
@@ -126,7 +127,7 @@ async def newapi_login(username: str, password: str):
         return {"success": False, "message": "New API 未配置"}
     
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
             resp = await http.post(
                 f"{NEWAPI_URL.rstrip('/')}/api/user/login",
                 json={"username": username, "password": password}
@@ -145,7 +146,7 @@ async def newapi_get_user_info(token: str):
         return {"success": False, "message": "New API 未配置"}
     
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
             resp = await http.get(
                 f"{NEWAPI_URL.rstrip('/')}/api/user/self",
                 headers={"Authorization": f"Bearer {token}"}
@@ -217,25 +218,21 @@ class MeowClient(discord.Client):
             except:
                 pass
         
-        # 注册命令（管理员为某用户注册）
-        @self.tree.command(name="注册", description="为用户注册 New API 账号（管理员专用）")
-        @app_commands.describe(用户="要注册的Discord用户", 密码="初始密码")
-        async def cmd_register(interaction: discord.Interaction, 用户: discord.Member, 密码: str):
-            if not is_admin(str(interaction.user.id)):
-                await interaction.response.send_message("❌ 此命令仅管理员可用", ephemeral=True)
-                return
-            
+        # 注册命令（用户自己注册）
+        @self.tree.command(name="注册", description="注册你的 New API 账号")
+        @app_commands.describe(密码="设置你的密码")
+        async def cmd_register(interaction: discord.Interaction, 密码: str):
             await interaction.response.defer(ephemeral=True)
             
-            discord_id = str(用户.id)
-            discord_name = 用户.display_name
+            discord_id = str(interaction.user.id)
+            discord_name = interaction.user.display_name
             
             # 检查是否已绑定
             binding = await check_user_bindng(discord_id)
             if binding.get("exists"):
                 existing = binding.get("user", {})
                 await interaction.followup.send(
-                    f"❌ 该用户已绑定账号：`{existing.get('newapi_username', '未知')}`",
+                    f"❌ 你已经注册过了！\n账号：`{existing.get('newapi_username', '未知')}`\n\n请使用 /登录 命令登录",
                     ephemeral=True
                 )
                 return
@@ -250,10 +247,9 @@ class MeowClient(discord.Client):
                 await save_user_binding(discord_id, discord_name, username)
                 await interaction.followup.send(
                     f"✅ 注册成功！\n"
-                    f"👤 Discord用户：{用户.mention}\n"
-                    f"🔑 New API 用户名：`{username}`\n"
+                    f"🔑 用户名：`{username}`\n"
                     f"🔐 密码：`{密码}`\n\n"
-                    f"请通知用户使用 /登录 命令登录",
+                    f"现在可以使用 /登录 命令登录了",
                     ephemeral=True
                 )
             else:
@@ -355,7 +351,7 @@ class MeowClient(discord.Client):
             await interaction.response.defer(ephemeral=True)
             # 获取用户的 API Keys
             try:
-                async with httpx.AsyncClient(timeout=30) as http:
+                async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.get(
                         f"{NEWAPI_URL.rstrip('/')}/api/token/?p=0&size=10",
                         headers={"Authorization": f"Bearer {token}"}
@@ -394,7 +390,7 @@ class MeowClient(discord.Client):
             
             await interaction.response.defer(ephemeral=True)
             try:
-                async with httpx.AsyncClient(timeout=30) as http:
+                async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.get(
                         f"{NEWAPI_URL.rstrip('/')}/api/user/search?keyword={用户名}",
                         headers={"Authorization": f"Bearer {NEWAPI_ADMIN_KEY}"}
