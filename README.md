@@ -1,5 +1,9 @@
 # 🐱 Meow QA Bot - 喵喵答疑机器人
 
+[![Discord](https://img.shields.io/badge/Discord-加入服务器-5865F2?logo=discord&logoColor=white)](https://discord.gg/QE6KGmnzmM)
+
+> 🎉 欢迎加入我的 Discord 服务器体验机器人：<https://discord.gg/QE6KGmnzmM>
+
 一个基于 Discord 的智能问答机器人，支持多 Bot 管理、用户记忆、知识库等功能。
 
 ## ✨ 功能特点
