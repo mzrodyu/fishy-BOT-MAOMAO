@@ -498,7 +498,18 @@ class MeowClient(discord.Client):
                         }
                     )
                     data = resp.json()
-                    print(f"[查询令牌] user_id={user_id}, 响应: {str(data)[:500]}")
+                    print(f"[查询令牌] user_id={user_id}, status={resp.status_code}, 响应: {str(data)[:800]}")
+                    
+                    # 调试：直接显示响应
+                    await interaction.followup.send(
+                        f"🔍 **调试信息**\n"
+                        f"user_id: {user_id}\n"
+                        f"status: {resp.status_code}\n"
+                        f"```json\n{str(data)[:1500]}\n```",
+                        ephemeral=True
+                    )
+                    return
+                    
                     if resp.status_code == 200 and data.get("success"):
                         tokens_data = data.get("data", {})
                         # 尝试多种数据结构
