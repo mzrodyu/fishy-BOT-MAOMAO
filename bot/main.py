@@ -98,18 +98,21 @@ intents.message_content = True
 # ==================== New API 功能 ====================
 
 async def newapi_register(username: str, password: str, display_name: str = ""):
-    """通过 New API 注册用户"""
+    """通过 New API 管理员接口创建用户"""
     if not NEWAPI_URL or not NEWAPI_ADMIN_KEY:
         return {"success": False, "message": "New API 未配置"}
     
     try:
         async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
+            # 使用管理员创建用户接口
             resp = await http.post(
-                f"{NEWAPI_URL.rstrip('/')}/api/user/register",
+                f"{NEWAPI_URL.rstrip('/')}/api/user",
                 json={
                     "username": username,
                     "password": password,
-                    "display_name": display_name or username
+                    "display_name": display_name or username,
+                    "quota": 0,
+                    "group": "default"
                 },
                 headers={"Authorization": f"Bearer {NEWAPI_ADMIN_KEY}"}
             )
