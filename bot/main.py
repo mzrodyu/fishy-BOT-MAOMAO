@@ -477,30 +477,43 @@ class MeowClient(discord.Client):
         async def cmd_token(interaction: discord.Interaction):
             discord_id = str(interaction.user.id)
             
-            # 需要先登录
-            token = user_tokens.get(discord_id)
-            if not token:
-                await interaction.response.send_message("❌ 请先使用 /登录 命令登录", ephemeral=True)
+            # 检查是否已绑定
+            binding = await check_user_bindng(discord_id)
+            if not binding.get("exists"):
+                await interaction.response.send_message("❌ 你还没有注册账号，请使用 /注册 命令", ephemeral=True)
                 return
             
             await interaction.response.defer(ephemeral=True)
             
-            # 用用户自己的 token 查询令牌
+            username = binding["user"]["newapi_username"]
+            user_id = await get_newapi_user_id(username)
+            if not user_id:
+                await interaction.followup.send("❌ 无法获取用户信息", ephemeral=True)
+                return
+            
+            # 管理员获取所有令牌，然后过滤
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.get(
                         f"{NEWAPI_URL.rstrip('/')}/api/token/",
-                        headers={"Authorization": f"Bearer {token}"}
+                        params={"p": 0, "size": 1000},
+                        headers={"Authorization": f"{NEWAPI_ADMIN_KEY}"}
                     )
                     data = resp.json()
+                    print(f"[令牌] user_id={user_id}, 响应: {str(data)[:500]}")
+                    
                     if resp.status_code == 200 and data.get("success"):
                         tokens_data = data.get("data", {})
                         if isinstance(tokens_data, dict):
-                            tokens = tokens_data.get("data", []) or tokens_data.get("items", [])
+                            all_tokens = tokens_data.get("data", []) or tokens_data.get("items", [])
                         elif isinstance(tokens_data, list):
-                            tokens = tokens_data
+                            all_tokens = tokens_data
                         else:
-                            tokens = []
+                            all_tokens = []
+                        
+                        # 过滤当前用户的令牌
+                        tokens = [t for t in all_tokens if str(t.get("user_id")) == str(user_id)]
+                        print(f"[令牌] 总数: {len(all_tokens)}, 用户令牌: {len(tokens)}")
                         
                         if not tokens:
                             await interaction.followup.send(
@@ -524,11 +537,7 @@ class MeowClient(discord.Client):
                         
                         await interaction.followup.send(msg, ephemeral=True)
                     else:
-                        if "unauthorized" in str(data).lower():
-                            user_tokens.pop(discord_id, None)
-                            await interaction.followup.send("❌ 登录已过期，请重新 /登录", ephemeral=True)
-                        else:
-                            await interaction.followup.send(f"❌ {data.get('message', '获取失败')}", ephemeral=True)
+                        await interaction.followup.send(f"❌ {data.get('message', '获取失败')}", ephemeral=True)
             except Exception as e:
                 await interaction.followup.send(f"❌ 请求失败: {e}", ephemeral=True)
         
@@ -538,45 +547,60 @@ class MeowClient(discord.Client):
         async def cmd_create_token(interaction: discord.Interaction, 名称: str):
             discord_id = str(interaction.user.id)
             
-            # 需要先登录
-            token = user_tokens.get(discord_id)
-            if not token:
-                await interaction.response.send_message("❌ 请先使用 /登录 命令登录", ephemeral=True)
+            # 检查是否已绑定
+            binding = await check_user_bindng(discord_id)
+            if not binding.get("exists"):
+                await interaction.response.send_message("❌ 你还没有注册账号，请使用 /注册 命令", ephemeral=True)
                 return
             
             await interaction.response.defer(ephemeral=True)
             
-            # 用用户自己的 token 创建令牌
+            username = binding["user"]["newapi_username"]
+            user_id = await get_newapi_user_id(username)
+            if not user_id:
+                await interaction.followup.send("❌ 无法获取用户信息", ephemeral=True)
+                return
+            
+            # 管理员帮用户创建令牌
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.post(
                         f"{NEWAPI_URL.rstrip('/')}/api/token/",
                         json={
                             "name": 名称,
+                            "user_id": user_id,
                             "remain_quota": 0,
                             "unlimited_quota": True
                         },
-                        headers={"Authorization": f"Bearer {token}"}
+                        headers={"Authorization": f"{NEWAPI_ADMIN_KEY}"}
                     )
                     data = resp.json()
+                    print(f"[创建令牌] user_id={user_id}, 响应: {data}")
+                    
                     if resp.status_code == 200 and data.get("success"):
                         token_key = data.get("data", "")
-                        # 确保有 sk- 前缀
+                        if isinstance(token_key, dict):
+                            token_key = token_key.get("key", "")
                         if token_key and not token_key.startswith('sk-'):
                             token_key = f"sk-{token_key}"
-                        await interaction.followup.send(
-                            f"✅ 令牌创建成功！\n\n"
-                            f"📛 名称：**{名称}**\n"
-                            f"🔑 Key：\n```\n{token_key}\n```\n"
-                            f"⚠️ 请妥善保管，此 Key 只显示一次！",
-                            ephemeral=True
-                        )
-                    else:
-                        if "unauthorized" in str(data).lower():
-                            user_tokens.pop(discord_id, None)
-                            await interaction.followup.send("❌ 登录已过期，请重新 /登录", ephemeral=True)
+                        
+                        if token_key:
+                            await interaction.followup.send(
+                                f"✅ 令牌创建成功！\n\n"
+                                f"📛 名称：**{名称}**\n"
+                                f"🔑 Key：\n```\n{token_key}\n```\n"
+                                f"⚠️ 请妥善保管，此 Key 只显示一次！",
+                                ephemeral=True
+                            )
                         else:
-                            await interaction.followup.send(f"❌ {data.get('message', '创建失败')}", ephemeral=True)
+                            await interaction.followup.send(
+                                f"✅ 令牌创建成功！\n\n"
+                                f"📛 名称：**{名称}**\n"
+                                f"🔑 使用 `/令牌` 查看你的 Key",
+                                ephemeral=True
+                            )
+                    else:
+                        await interaction.followup.send(f"❌ {data.get('message', '创建失败')}", ephemeral=True)
             except Exception as e:
                 await interaction.followup.send(f"❌ 请求失败: {e}", ephemeral=True)
 
