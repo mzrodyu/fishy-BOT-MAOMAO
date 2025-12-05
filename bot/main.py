@@ -302,15 +302,22 @@ class MeowClient(discord.Client):
             # 登录
             result = await newapi_login(username, 密码)
             if result["success"]:
-                token = result["token"]
-                # 保存到内存
-                user_tokens[discord_id] = token
-                # 更新到后端
-                await update_user_token(discord_id, token)
-                await interaction.followup.send(
-                    f"✅ 登录成功！\n👤 账号：`{username}`\n\n现在可以使用 /账号 /余额 /令牌 等命令了",
-                    ephemeral=True
-                )
+                token = result.get("token")
+                print(f"[登录] discord_id={discord_id}, token={token}")
+                if token:
+                    # 保存到内存
+                    user_tokens[discord_id] = token
+                    # 更新到后端
+                    await update_user_token(discord_id, token)
+                    await interaction.followup.send(
+                        f"✅ 登录成功！\n👤 账号：`{username}`\n\n现在可以使用 /账号 /余额 /令牌 等命令了",
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.followup.send(
+                        f"✅ 登录成功！\n👤 账号：`{username}`\n\n⚠️ 但未获取到 token，某些功能可能受限",
+                        ephemeral=True
+                    )
             else:
                 await interaction.followup.send(f"❌ {result['message']}", ephemeral=True)
 
