@@ -339,13 +339,19 @@ class MeowClient(discord.Client):
                             "New-Api-User": "1"
                         }
                     )
-                    print(f"[账号查询] 状态码: {resp.status_code}, 响应: {resp.text[:1000]}")
                     if resp.status_code == 200:
                         data = resp.json()
-                        print(f"[账号查询] data类型: {type(data)}, data: {data}")
                         if data.get("success"):
-                            users = data.get("data", {}).get("data", []) if isinstance(data.get("data"), dict) else data.get("data", [])
-                            print(f"[账号查询] users类型: {type(users)}, users: {users}")
+                            # 处理嵌套数据结构
+                            raw_data = data.get("data")
+                            if isinstance(raw_data, dict):
+                                users = raw_data.get("data", [])
+                            elif isinstance(raw_data, list):
+                                users = raw_data
+                            else:
+                                await interaction.followup.send(f"❌ 数据格式异常: {type(raw_data)}", ephemeral=True)
+                                return
+                            
                             # 筛选匹配的用户
                             user = None
                             for u in users:
@@ -362,11 +368,11 @@ class MeowClient(discord.Client):
 """
                                 await interaction.followup.send(info, ephemeral=True)
                                 return
-                            await interaction.followup.send("❌ 未找到用户", ephemeral=True)
+                            await interaction.followup.send(f"❌ 未找到用户 (共{len(users)}个用户)", ephemeral=True)
                             return
                         await interaction.followup.send(f"❌ {data.get('message', '查询失败')}", ephemeral=True)
                     else:
-                        await interaction.followup.send(f"❌ HTTP {resp.status_code}", ephemeral=True)
+                        await interaction.followup.send(f"❌ HTTP {resp.status_code}: {resp.text[:100]}", ephemeral=True)
             except Exception as e:
                 import traceback
                 print(f"[账号查询错误] {traceback.format_exc()}")
