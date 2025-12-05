@@ -209,6 +209,21 @@ def init_db():
         """
     )
     
+    # New API 用户绑定表（Discord ID ↔ New API 账号）
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS newapi_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            discord_id TEXT NOT NULL UNIQUE,
+            discord_name TEXT DEFAULT '',
+            newapi_username TEXT NOT NULL,
+            newapi_token TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    
     # 确保默认BOT存在并修正名称
     cur.execute("INSERT OR IGNORE INTO bots (id, name) VALUES ('default', 'Fishy')")
     cur.execute("INSERT OR IGNORE INTO bots (id, name) VALUES ('maodie', '小鱼娘')")
@@ -1073,6 +1088,110 @@ async def api_ask(body: AskRequest):
             print(f"[记忆更新错误] {e}")
     
     return {"answer": answer}
+
+
+# ==================== New API 用户管理 ====================
+
+class NewApiUserRequest(BaseModel):
+    discord_id: str
+    discord_name: str = ""
+    newapi_username: str
+    newapi_token: str = ""
+
+
+@app.get("/admin/newapi-users", response_class=HTMLResponse)
+async def newapi_users_page(request: Request):
+    """New API 用户管理页面"""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, discord_id, discord_name, newapi_username, created_at FROM newapi_users ORDER BY created_at DESC")
+    users = [dict(row) for row in cur.fetchall()]
+    conn.close()
+    return templates.TemplateResponse("newapi_users.html", {"request": request, "users": users})
+
+
+@app.get("/api/newapi-users")
+async def get_newapi_users():
+    """获取所有 New API 用户绑定"""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, discord_id, discord_name, newapi_username, created_at FROM newapi_users ORDER BY created_at DESC")
+    users = [dict(row) for row in cur.fetchall()]
+    conn.close()
+    return {"users": users}
+
+
+@app.get("/api/newapi-users/by-discord/{discord_id}")
+async def get_newapi_user_by_discord(discord_id: str):
+    """通过 Discord ID 查询绑定"""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM newapi_users WHERE discord_id = ?", (discord_id,))
+    row = cur.fetchone()
+    conn.close()
+    if row:
+        return {"exists": True, "user": dict(row)}
+    return {"exists": False}
+
+
+@app.post("/api/newapi-users")
+async def create_newapi_user(user: NewApiUserRequest):
+    """创建 New API 用户绑定"""
+    conn = get_db()
+    cur = conn.cursor()
+    
+    # 检查是否已存在
+    cur.execute("SELECT id FROM newapi_users WHERE discord_id = ?", (user.discord_id,))
+    if cur.fetchone():
+        conn.close()
+        raise HTTPException(status_code=400, detail="该 Discord 账号已绑定")
+    
+    cur.execute(
+        "INSERT INTO newapi_users (discord_id, discord_name, newapi_username, newapi_token) VALUES (?, ?, ?, ?)",
+        (user.discord_id, user.discord_name, user.newapi_username, user.newapi_token)
+    )
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": "绑定成功"}
+
+
+@app.put("/api/newapi-users/{discord_id}")
+async def update_newapi_user(discord_id: str, user: NewApiUserRequest):
+    """更新 New API 用户绑定"""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE newapi_users SET discord_name = ?, newapi_username = ?, newapi_token = ?, updated_at = CURRENT_TIMESTAMP WHERE discord_id = ?",
+        (user.discord_name, user.newapi_username, user.newapi_token, discord_id)
+    )
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+@app.delete("/api/newapi-users/{discord_id}")
+async def delete_newapi_user(discord_id: str):
+    """删除 New API 用户绑定"""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM newapi_users WHERE discord_id = ?", (discord_id,))
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+@app.put("/api/newapi-users/{discord_id}/token")
+async def update_newapi_token(discord_id: str, token: str):
+    """更新用户的 New API Token"""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE newapi_users SET newapi_token = ?, updated_at = CURRENT_TIMESTAMP WHERE discord_id = ?",
+        (token, discord_id)
+    )
+    conn.commit()
+    conn.close()
+    return {"success": True}
 
 
 if __name__ == "__main__":

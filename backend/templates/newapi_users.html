@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New API 用户管理 - 喵喵答疑</title>
+    <style>
+      :root {
+        --bg-main: #0f0f0f;
+        --bg-card: #1a1a1a;
+        --bg-sidebar: #141414;
+        --text-main: #e0e0e0;
+        --text-muted: #888;
+        --border-color: #2a2a2a;
+        --accent: #5865f2;
+        --accent-hover: #4752c4;
+        --danger: #ed4245;
+        --success: #57f287;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: var(--bg-main);
+        color: var(--text-main);
+        display: flex;
+        min-height: 100vh;
+      }
+      .sidebar {
+        width: 240px;
+        background: var(--bg-sidebar);
+        border-right: 1px solid var(--border-color);
+        padding: 20px 0;
+        position: fixed;
+        height: 100vh;
+      }
+      .brand {
+        padding: 0 20px 20px;
+        font-size: 20px;
+        font-weight: bold;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .brand-icon {
+        margin-right: 8px;
+      }
+      .nav-menu {
+        padding: 20px 10px;
+      }
+      .nav-section {
+        color: var(--text-muted);
+        font-size: 12px;
+        padding: 10px;
+        text-transform: uppercase;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 15px;
+        color: var(--text-main);
+        text-decoration: none;
+        border-radius: 8px;
+        margin-bottom: 5px;
+        transition: background 0.2s;
+      }
+      .nav-item:hover {
+        background: var(--bg-card);
+      }
+      .nav-item.active {
+        background: var(--accent);
+        color: white;
+      }
+      .main-wrapper {
+        margin-left: 240px;
+        flex: 1;
+        padding: 30px;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+      .page-title {
+        font-size: 24px;
+      }
+      .card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+      }
+      th {
+        color: var(--text-muted);
+        font-weight: 500;
+        font-size: 13px;
+      }
+      .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: white;
+      }
+      .btn-primary:hover {
+        background: var(--accent-hover);
+      }
+      .btn-danger {
+        background: var(--danger);
+        color: white;
+      }
+      .btn-danger:hover {
+        opacity: 0.8;
+      }
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+      .discord-id {
+        font-family: monospace;
+        background: var(--bg-main);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-muted);
+      }
+      .stats {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+      .stat-card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 20px;
+        flex: 1;
+      }
+      .stat-value {
+        font-size: 32px;
+        font-weight: bold;
+        color: var(--accent);
+      }
+      .stat-label {
+        color: var(--text-muted);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-icon">🐱</span> 喵喵答疑</div>
+      <nav class="nav-menu">
+        <div class="nav-section">主菜单</div>
+        <a href="/admin/bots" class="nav-item">🤖 BOT管理</a>
+        <a href="/admin/knowledge" class="nav-item">📚 知识库</a>
+        <a href="/admin/settings" class="nav-item">⚙️ API 设置</a>
+        <a href="/admin/memories" class="nav-item">🧠 用户记忆</a>
+        <a href="/admin/newapi-users" class="nav-item active">🔑 API用户</a>
+        <a href="/admin/stats" class="nav-item">📊 统计</a>
+      </nav>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="header">
+        <h1 class="page-title">🔑 New API 用户管理</h1>
+      </header>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-value">{{ users|length }}</div>
+          <div class="stat-label">已绑定用户</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Discord 用户</th>
+              <th>Discord ID</th>
+              <th>New API 用户名</th>
+              <th>绑定时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if users %} {% for user in users %}
+            <tr>
+              <td>{{ user.discord_name or '未知' }}</td>
+              <td><code class="discord-id">{{ user.discord_id }}</code></td>
+              <td>{{ user.newapi_username }}</td>
+              <td>{{ user.created_at[:16] if user.created_at else 'N/A' }}</td>
+              <td>
+                <button
+                  class="btn btn-danger btn-sm"
+                  onclick="deleteUser('{{ user.discord_id }}')"
+                >
+                  删除
+                </button>
+              </td>
+            </tr>
+            {% endfor %} {% else %}
+            <tr>
+              <td colspan="5" class="empty-state">
+                📭 暂无绑定用户<br />
+                <small
+                  >用户通过 Discord Bot 的 /注册 命令注册后会显示在这里</small
+                >
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      async function deleteUser(discordId) {
+        if (!confirm("确定要删除这个用户绑定吗？")) return;
+
+        try {
+          const resp = await fetch(`/api/newapi-users/${discordId}`, {
+            method: "DELETE",
+          });
+          if (resp.ok) {
+            location.reload();
+          } else {
+            alert("删除失败");
+          }
+        } catch (e) {
+          alert("删除失败: " + e);
+        }
+      }
+    </script>
+  </body>
+</html>

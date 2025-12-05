@@ -175,31 +175,121 @@ class MeowClient(discord.Client):
 
     async def setup_hook(self):
         """注册斜杠命令"""
-        # 注册命令（管理员）
+        
+        # 检查用户是否已绑定
+        async def check_user_bindng(discord_id: str):
+            """检查用户是否已在后端绑定"""
+            try:
+                async with httpx.AsyncClient(timeout=10) as http:
+                    resp = await http.get(f"{BACKEND_URL.rstrip('/')}/api/newapi-users/by-discord/{discord_id}")
+                    if resp.status_code == 200:
+                        return resp.json()
+            except:
+                pass
+            return {"exists": False}
+        
+        # 保存用户绑定到后端
+        async def save_user_binding(discord_id: str, discord_name: str, newapi_username: str, token: str = ""):
+            """保存用户绑定到后端"""
+            try:
+                async with httpx.AsyncClient(timeout=10) as http:
+                    await http.post(
+                        f"{BACKEND_URL.rstrip('/')}/api/newapi-users",
+                        json={
+                            "discord_id": discord_id,
+                            "discord_name": discord_name,
+                            "newapi_username": newapi_username,
+                            "newapi_token": token
+                        }
+                    )
+            except Exception as e:
+                print(f"保存绑定失败: {e}")
+        
+        # 更新用户 Token
+        async def update_user_token(discord_id: str, token: str):
+            """更新用户 Token"""
+            try:
+                async with httpx.AsyncClient(timeout=10) as http:
+                    await http.put(
+                        f"{BACKEND_URL.rstrip('/')}/api/newapi-users/{discord_id}/token",
+                        params={"token": token}
+                    )
+            except:
+                pass
+        
+        # 注册命令（管理员为某用户注册）
         @self.tree.command(name="注册", description="为用户注册 New API 账号（管理员专用）")
-        @app_commands.describe(用户名="注册的用户名", 密码="初始密码", 昵称="显示昵称（可选）")
-        async def cmd_register(interaction: discord.Interaction, 用户名: str, 密码: str, 昵称: str = ""):
+        @app_commands.describe(用户="要注册的Discord用户", 密码="初始密码")
+        async def cmd_register(interaction: discord.Interaction, 用户: discord.Member, 密码: str):
             if not is_admin(str(interaction.user.id)):
                 await interaction.response.send_message("❌ 此命令仅管理员可用", ephemeral=True)
                 return
             
             await interaction.response.defer(ephemeral=True)
-            result = await newapi_register(用户名, 密码, 昵称)
+            
+            discord_id = str(用户.id)
+            discord_name = 用户.display_name
+            
+            # 检查是否已绑定
+            binding = await check_user_bindng(discord_id)
+            if binding.get("exists"):
+                existing = binding.get("user", {})
+                await interaction.followup.send(
+                    f"❌ 该用户已绑定账号：`{existing.get('newapi_username', '未知')}`",
+                    ephemeral=True
+                )
+                return
+            
+            # 使用 Discord ID 作为用户名
+            username = f"dc_{discord_id}"
+            
+            # 在 New API 注册
+            result = await newapi_register(username, 密码, discord_name)
             if result["success"]:
-                await interaction.followup.send(f"✅ 注册成功！\n👤 用户名：`{用户名}`\n🔑 密码：`{密码}`", ephemeral=True)
+                # 保存绑定关系到后端
+                await save_user_binding(discord_id, discord_name, username)
+                await interaction.followup.send(
+                    f"✅ 注册成功！\n"
+                    f"👤 Discord用户：{用户.mention}\n"
+                    f"🔑 New API 用户名：`{username}`\n"
+                    f"🔐 密码：`{密码}`\n\n"
+                    f"请通知用户使用 /登录 命令登录",
+                    ephemeral=True
+                )
             else:
                 await interaction.followup.send(f"❌ {result['message']}", ephemeral=True)
 
-        # 登录命令
+        # 登录命令（自动使用绑定的账号）
         @self.tree.command(name="登录", description="登录你的 New API 账号")
-        @app_commands.describe(用户名="你的用户名", 密码="你的密码")
-        async def cmd_login(interaction: discord.Interaction, 用户名: str, 密码: str):
+        @app_commands.describe(密码="你的密码")
+        async def cmd_login(interaction: discord.Interaction, 密码: str):
             await interaction.response.defer(ephemeral=True)
-            result = await newapi_login(用户名, 密码)
+            
+            discord_id = str(interaction.user.id)
+            
+            # 检查是否已绑定
+            binding = await check_user_bindng(discord_id)
+            if not binding.get("exists"):
+                await interaction.followup.send(
+                    "❌ 你还没有注册账号，请联系管理员使用 /注册 命令为你开通",
+                    ephemeral=True
+                )
+                return
+            
+            username = binding["user"]["newapi_username"]
+            
+            # 登录
+            result = await newapi_login(username, 密码)
             if result["success"]:
-                # 保存 token
-                user_tokens[str(interaction.user.id)] = result["token"]
-                await interaction.followup.send("✅ 登录成功！现在可以使用 /账号 /余额 /令牌 等命令了", ephemeral=True)
+                token = result["token"]
+                # 保存到内存
+                user_tokens[discord_id] = token
+                # 更新到后端
+                await update_user_token(discord_id, token)
+                await interaction.followup.send(
+                    f"✅ 登录成功！\n👤 账号：`{username}`\n\n现在可以使用 /账号 /余额 /令牌 等命令了",
+                    ephemeral=True
+                )
             else:
                 await interaction.followup.send(f"❌ {result['message']}", ephemeral=True)
 
