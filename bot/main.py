@@ -485,7 +485,7 @@ class MeowClient(discord.Client):
                 await interaction.followup.send("❌ 无法获取用户信息", ephemeral=True)
                 return
             
-            # 获取用户的令牌
+            # 获取用户的令牌（管理员身份查询指定用户的令牌）
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.get(
@@ -493,7 +493,7 @@ class MeowClient(discord.Client):
                         params={"p": 0, "user_id": user_id},
                         headers={
                             "Authorization": f"{NEWAPI_ADMIN_KEY}",
-                            "New-Api-User": str(user_id)
+                            "New-Api-User": "1"
                         }
                     )
                     data = resp.json()
@@ -544,7 +544,7 @@ class MeowClient(discord.Client):
                 await interaction.followup.send("❌ 无法获取用户信息", ephemeral=True)
                 return
             
-            # 创建令牌
+            # 创建令牌（用管理员身份，但指定 user_id）
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.post(
@@ -557,7 +557,7 @@ class MeowClient(discord.Client):
                         },
                         headers={
                             "Authorization": f"{NEWAPI_ADMIN_KEY}",
-                            "New-Api-User": str(user_id)
+                            "New-Api-User": "1"
                         }
                     )
                     data = resp.json()
