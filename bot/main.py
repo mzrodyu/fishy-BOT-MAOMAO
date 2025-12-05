@@ -339,15 +339,17 @@ class MeowClient(discord.Client):
                             "New-Api-User": "1"
                         }
                     )
-                    print(f"[账号查询] 状态码: {resp.status_code}, 响应: {resp.text[:500]}")
+                    print(f"[账号查询] 状态码: {resp.status_code}, 响应: {resp.text[:1000]}")
                     if resp.status_code == 200:
                         data = resp.json()
+                        print(f"[账号查询] data类型: {type(data)}, data: {data}")
                         if data.get("success"):
-                            users = data.get("data", [])
+                            users = data.get("data", {}).get("data", []) if isinstance(data.get("data"), dict) else data.get("data", [])
+                            print(f"[账号查询] users类型: {type(users)}, users: {users}")
                             # 筛选匹配的用户
                             user = None
                             for u in users:
-                                if u.get("username") == username:
+                                if isinstance(u, dict) and u.get("username") == username:
                                     user = u
                                     break
                             if user:
