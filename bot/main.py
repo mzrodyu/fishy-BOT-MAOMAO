@@ -485,12 +485,13 @@ class MeowClient(discord.Client):
                 await interaction.followup.send("❌ 无法获取用户信息", ephemeral=True)
                 return
             
-            # 获取用户的令牌
+            # 获取用户的令牌（使用搜索接口，管理员权限）
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
+                    # 尝试搜索接口
                     resp = await http.get(
-                        f"{NEWAPI_URL.rstrip('/')}/api/token/",
-                        params={"p": 0, "page_size": 100},
+                        f"{NEWAPI_URL.rstrip('/')}/api/token/search",
+                        params={"user_id": user_id},
                         headers={
                             "Authorization": f"{NEWAPI_ADMIN_KEY}",
                             "New-Api-User": "1"
