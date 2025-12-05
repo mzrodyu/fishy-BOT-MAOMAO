@@ -331,8 +331,9 @@ class MeowClient(discord.Client):
             username = binding["user"]["newapi_username"]
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
+                    # 获取所有用户然后筛选
                     resp = await http.get(
-                        f"{NEWAPI_URL.rstrip('/')}/api/user/search?keyword={username}",
+                        f"{NEWAPI_URL.rstrip('/')}/api/user/?keyword={username}",
                         headers={
                             "Authorization": f"Bearer {NEWAPI_ADMIN_KEY}",
                             "New-Api-User": "1"
@@ -343,8 +344,13 @@ class MeowClient(discord.Client):
                         data = resp.json()
                         if data.get("success"):
                             users = data.get("data", [])
-                            if users:
-                                user = users[0]
+                            # 筛选匹配的用户
+                            user = None
+                            for u in users:
+                                if u.get("username") == username:
+                                    user = u
+                                    break
+                            if user:
                                 info = f"""📋 **账号信息**
 👤 用户名：`{user.get('username', 'N/A')}`
 📛 昵称：{user.get('display_name', 'N/A')}
@@ -402,26 +408,31 @@ class MeowClient(discord.Client):
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.get(
-                        f"{NEWAPI_URL.rstrip('/')}/api/user/search?keyword={username}",
+                        f"{NEWAPI_URL.rstrip('/')}/api/user/?keyword={username}",
                         headers={
                             "Authorization": f"Bearer {NEWAPI_ADMIN_KEY}",
                             "New-Api-User": "1"
                         }
                     )
-                    data = resp.json()
-                    if resp.status_code == 200 and data.get("success"):
-                        users = data.get("data", [])
-                        if users:
-                            user = users[0]
-                            quota = user.get('quota', 0) / 500000
-                            used = user.get('used_quota', 0) / 500000
-                            await interaction.followup.send(
-                                f"💰 **余额查询**\n"
-                                f"可用余额：**${quota:.4f}**\n"
-                                f"已使用：${used:.4f}",
-                                ephemeral=True
-                            )
-                            return
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("success"):
+                            users = data.get("data", [])
+                            user = None
+                            for u in users:
+                                if u.get("username") == username:
+                                    user = u
+                                    break
+                            if user:
+                                quota = user.get('quota', 0) / 500000
+                                used = user.get('used_quota', 0) / 500000
+                                await interaction.followup.send(
+                                    f"💰 **余额查询**\n"
+                                    f"可用余额：**${quota:.4f}**\n"
+                                    f"已使用：${used:.4f}",
+                                    ephemeral=True
+                                )
+                                return
                     await interaction.followup.send("❌ 查询失败", ephemeral=True)
             except Exception as e:
                 await interaction.followup.send(f"❌ 请求失败: {e}", ephemeral=True)
