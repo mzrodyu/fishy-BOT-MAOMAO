@@ -516,7 +516,9 @@ class MeowClient(discord.Client):
                         
                         # 过滤当前用户的令牌
                         tokens = [t for t in all_tokens if str(t.get("user_id")) == str(user_id)]
-                        print(f"[令牌] 总数: {len(all_tokens)}, 用户令牌: {len(tokens)}")
+                        # 打印所有令牌的 user_id
+                        token_user_ids = [t.get("user_id") for t in all_tokens[:10]]
+                        print(f"[令牌] 总数: {len(all_tokens)}, 用户令牌: {len(tokens)}, 令牌user_ids: {token_user_ids}")
                         
                         if not tokens:
                             await interaction.followup.send(
