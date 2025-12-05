@@ -122,6 +122,12 @@ python main.py
 
 MIT License
 
+## 👤 作者
+
+**Catie猫猫** / **mzrodyu** / **猫猫**
+
+- GitHub: [@mzrodyu](https://github.com/mzrodyu)
+
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
