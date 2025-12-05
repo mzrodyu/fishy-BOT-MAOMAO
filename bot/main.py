@@ -115,7 +115,10 @@ async def newapi_register(username: str, password: str, display_name: str = ""):
                     "group": "default",
                     "status": 1
                 },
-                headers={"Authorization": f"{NEWAPI_ADMIN_KEY}"}
+                headers={
+                    "Authorization": f"Bearer {NEWAPI_ADMIN_KEY}",
+                    "New-Api-User": "1"
+                }
             )
             print(f"[New API 注册] 状态码: {resp.status_code}, 响应: {resp.text[:500]}")
             if resp.status_code == 200:
