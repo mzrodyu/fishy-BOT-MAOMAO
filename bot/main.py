@@ -521,7 +521,8 @@ class MeowClient(discord.Client):
                         if not tokens:
                             await interaction.followup.send(
                                 f"📭 你还没有 API Key\n\n"
-                                f"使用 `/创建令牌 名称` 来创建一个！",
+                                f"使用 `/创建令牌 名称` 来创建一个！\n\n"
+                                f"🔍 调试: user_id={user_id}, 总令牌={len(all_tokens)}",
                                 ephemeral=True
                             )
                             return
