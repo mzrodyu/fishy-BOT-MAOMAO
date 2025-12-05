@@ -106,15 +106,16 @@ async def newapi_register(username: str, password: str, display_name: str = ""):
         async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
             # 使用管理员创建用户接口
             resp = await http.post(
-                f"{NEWAPI_URL.rstrip('/')}/api/user",
+                f"{NEWAPI_URL.rstrip('/')}/api/user/",
                 json={
                     "username": username,
                     "password": password,
                     "display_name": display_name or username,
                     "quota": 0,
-                    "group": "default"
+                    "group": "default",
+                    "status": 1
                 },
-                headers={"Authorization": f"Bearer {NEWAPI_ADMIN_KEY}"}
+                headers={"Authorization": f"{NEWAPI_ADMIN_KEY}"}
             )
             print(f"[New API 注册] 状态码: {resp.status_code}, 响应: {resp.text[:500]}")
             if resp.status_code == 200:
