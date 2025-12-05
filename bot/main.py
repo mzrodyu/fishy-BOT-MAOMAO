@@ -277,6 +277,7 @@ class MeowClient(discord.Client):
                 if user_id:
                     try:
                         async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
+                            # 不带 New-Api-User 头，只传 user_id 参数
                             resp = await http.post(
                                 f"{NEWAPI_URL.rstrip('/')}/api/token/",
                                 json={
@@ -286,8 +287,7 @@ class MeowClient(discord.Client):
                                     "unlimited_quota": True
                                 },
                                 headers={
-                                    "Authorization": f"{NEWAPI_ADMIN_KEY}",
-                                    "New-Api-User": str(user_id)  # 用用户自己的ID
+                                    "Authorization": f"{NEWAPI_ADMIN_KEY}"
                                 }
                             )
                             data = resp.json()
@@ -623,8 +623,7 @@ class MeowClient(discord.Client):
                             "unlimited_quota": True
                         },
                         headers={
-                            "Authorization": f"{NEWAPI_ADMIN_KEY}",
-                            "New-Api-User": str(user_id)  # 用用户自己的ID
+                            "Authorization": f"{NEWAPI_ADMIN_KEY}"
                         }
                     )
                     data = resp.json()
