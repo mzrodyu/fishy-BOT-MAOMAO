@@ -497,7 +497,10 @@ class MeowClient(discord.Client):
                     resp = await http.get(
                         f"{NEWAPI_URL.rstrip('/')}/api/token/",
                         params={"p": 0, "size": 1000},
-                        headers={"Authorization": f"{NEWAPI_ADMIN_KEY}"}
+                        headers={
+                            "Authorization": f"{NEWAPI_ADMIN_KEY}",
+                            "New-Api-User": "1"
+                        }
                     )
                     data = resp.json()
                     print(f"[令牌] user_id={user_id}, 响应: {str(data)[:500]}")
@@ -572,7 +575,10 @@ class MeowClient(discord.Client):
                             "remain_quota": 0,
                             "unlimited_quota": True
                         },
-                        headers={"Authorization": f"{NEWAPI_ADMIN_KEY}"}
+                        headers={
+                            "Authorization": f"{NEWAPI_ADMIN_KEY}",
+                            "New-Api-User": "1"
+                        }
                     )
                     data = resp.json()
                     print(f"[创建令牌] user_id={user_id}, 响应: {data}")
