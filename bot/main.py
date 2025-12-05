@@ -116,10 +116,14 @@ async def newapi_register(username: str, password: str, display_name: str = ""):
                 },
                 headers={"Authorization": f"Bearer {NEWAPI_ADMIN_KEY}"}
             )
-            data = resp.json()
-            if resp.status_code == 200 and data.get("success"):
-                return {"success": True, "message": "注册成功", "data": data.get("data")}
-            return {"success": False, "message": data.get("message", "注册失败")}
+            print(f"[New API 注册] 状态码: {resp.status_code}, 响应: {resp.text[:500]}")
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("success"):
+                    return {"success": True, "message": "注册成功", "data": data.get("data")}
+                return {"success": False, "message": data.get("message", "注册失败")}
+            else:
+                return {"success": False, "message": f"HTTP {resp.status_code}: {resp.text[:200]}"}
     except Exception as e:
         return {"success": False, "message": f"请求失败: {e}"}
 
