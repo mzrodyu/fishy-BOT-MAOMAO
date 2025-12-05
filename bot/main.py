@@ -143,9 +143,13 @@ async def newapi_login(username: str, password: str):
                 f"{NEWAPI_URL.rstrip('/')}/api/user/login",
                 json={"username": username, "password": password}
             )
+            print(f"[New API 登录] 状态码: {resp.status_code}, 响应: {resp.text[:500]}")
             data = resp.json()
             if resp.status_code == 200 and data.get("success"):
-                return {"success": True, "token": data.get("data", {}).get("token"), "data": data.get("data")}
+                # token 可能在不同位置
+                token = data.get("data", {}).get("token") or data.get("data", {}).get("access_token") or data.get("token")
+                print(f"[New API 登录] 获取到的 token: {token}")
+                return {"success": True, "token": token, "data": data.get("data")}
             return {"success": False, "message": data.get("message", "登录失败")}
     except Exception as e:
         return {"success": False, "message": f"请求失败: {e}"}
