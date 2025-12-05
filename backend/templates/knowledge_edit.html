@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>编辑知识 - 喵喵答疑</title>
+    <link rel="stylesheet" href="/static/admin.css" />
+  </head>
+  <body>
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-icon">🐱</span> 喵喵答疑</div>
+      <nav class="nav-menu">
+        <div class="nav-section">主菜单</div>
+        <a href="/admin/knowledge" class="nav-item active">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+            />
+          </svg>
+          知识库
+        </a>
+        <a href="/admin/settings" class="nav-item">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+          API 设置
+        </a>
+        <div class="nav-section">其他</div>
+        <a href="/logout" class="nav-item" style="color: #f87171">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
+            />
+          </svg>
+          退出登录
+        </a>
+      </nav>
+    </aside>
+
+    <!-- 主内容区 -->
+    <div class="main-wrapper">
+      <header class="header">
+        <h1 class="page-title">✏️ 编辑知识 #{{ item["id"] }}</h1>
+      </header>
+
+      <div class="content-area">
+        <div class="content-inner">
+          <section class="card" style="max-width: 600px">
+            <form method="post" action="/admin/knowledge/{{ item['id'] }}">
+              <div class="form-group">
+                <label class="form-label">标题</label>
+                <input
+                  type="text"
+                  name="title"
+                  id="edit_title"
+                  class="input"
+                  value="{{ item['title'] }}"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label">标签（用逗号分隔）</label>
+                <input
+                  type="text"
+                  name="tags"
+                  class="input"
+                  value="{{ item['tags'] }}"
+                />
+              </div>
+              <div class="form-group">
+                <label
+                  class="form-label"
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                  "
+                >
+                  详细内容
+                  <button
+                    type="button"
+                    id="btn-ai-gen"
+                    class="btn-sm"
+                    style="
+                      background: #8b5cf6;
+                      color: white;
+                      border: none;
+                      cursor: pointer;
+                    "
+                  >
+                    ✨ AI 重写
+                  </button>
+                </label>
+                <textarea
+                  name="content"
+                  id="edit_content"
+                  class="textarea"
+                  required
+                  style="min-height: 300px"
+                >
+{{ item['content'] }}</textarea
+                >
+              </div>
+              <div style="display: flex; gap: 10px">
+                <button type="submit" class="btn btn-primary" style="flex: 1">
+                  保存修改
+                </button>
+                <a
+                  href="/admin/knowledge"
+                  class="btn"
+                  style="
+                    background: #64748b;
+                    color: white;
+                    text-decoration: none;
+                    padding: 0 20px;
+                    display: flex;
+                    align-items: center;
+                  "
+                  >取消</a
+                >
+              </div>
+            </form>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const btnAiGen = document.getElementById("btn-ai-gen");
+      const titleInput = document.getElementById("edit_title");
+      const contentInput = document.getElementById("edit_content");
+
+      if (btnAiGen) {
+        btnAiGen.addEventListener("click", async () => {
+          const title = titleInput.value.trim();
+          if (!title) {
+            alert("请先填写标题，AI 才能帮你写内容哦！");
+            titleInput.focus();
+            return;
+          }
+
+          if (!confirm("确定要用 AI 重新生成内容吗？现有的内容会被覆盖。")) {
+            return;
+          }
+
+          const originalText = btnAiGen.innerText;
+          btnAiGen.innerText = "生成中...";
+          btnAiGen.disabled = true;
+          btnAiGen.style.opacity = "0.7";
+
+          try {
+            const response = await fetch("/admin/api/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: title }),
+            });
+
+            if (!response.ok) throw new Error("网络请求失败");
+
+            const data = await response.json();
+            if (data.content) {
+              contentInput.value = data.content;
+            } else {
+              alert("生成失败：" + (data.error || "未知错误"));
+            }
+          } catch (err) {
+            console.error(err);
+            alert("生成出错");
+          } finally {
+            btnAiGen.innerText = originalText;
+            btnAiGen.disabled = false;
+            btnAiGen.style.opacity = "1";
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
