@@ -485,28 +485,31 @@ class MeowClient(discord.Client):
                 await interaction.followup.send("❌ 无法获取用户信息", ephemeral=True)
                 return
             
-            # 获取用户的令牌（管理员身份查询指定用户的令牌）
+            # 获取用户的令牌
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.get(
                         f"{NEWAPI_URL.rstrip('/')}/api/token/",
-                        params={"p": 0, "user_id": user_id},
+                        params={"p": 0, "page_size": 100},
                         headers={
                             "Authorization": f"{NEWAPI_ADMIN_KEY}",
                             "New-Api-User": "1"
                         }
                     )
                     data = resp.json()
-                    print(f"[查询令牌] 响应: {data}")
+                    print(f"[查询令牌] user_id={user_id}, 响应: {str(data)[:500]}")
                     if resp.status_code == 200 and data.get("success"):
                         tokens_data = data.get("data", {})
                         # 尝试多种数据结构
                         if isinstance(tokens_data, dict):
-                            tokens = tokens_data.get("data", []) or tokens_data.get("items", [])
+                            all_tokens = tokens_data.get("data", []) or tokens_data.get("items", [])
                         elif isinstance(tokens_data, list):
-                            tokens = tokens_data
+                            all_tokens = tokens_data
                         else:
-                            tokens = []
+                            all_tokens = []
+                        # 过滤属于当前用户的令牌
+                        tokens = [t for t in all_tokens if t.get("user_id") == user_id]
+                        print(f"[查询令牌] 总数: {len(all_tokens)}, 用户令牌: {len(tokens)}")
                         if not tokens:
                             await interaction.followup.send(
                                 f"📭 你还没有 API Key\n\n"
@@ -519,6 +522,9 @@ class MeowClient(discord.Client):
                         for t in tokens[:5]:
                             name = t.get('name', '未命名')
                             key = t.get('key', '')
+                            # 确保 key 有 sk- 前缀
+                            if key and not key.startswith('sk-'):
+                                key = f"sk-{key}"
                             status = "✅" if t.get('status') == 1 else "❌"
                             quota = t.get('remain_quota', 0)
                             unlimited = t.get('unlimited_quota', False)
