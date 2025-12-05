@@ -331,11 +331,12 @@ class MeowClient(discord.Client):
             username = binding["user"]["newapi_username"]
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
-                    # 获取所有用户然后筛选
+                    # 使用搜索接口
                     resp = await http.get(
-                        f"{NEWAPI_URL.rstrip('/')}/api/user/",
+                        f"{NEWAPI_URL.rstrip('/')}/api/user/search",
+                        params={"keyword": username},
                         headers={
-                            "Authorization": f"Bearer {NEWAPI_ADMIN_KEY}",
+                            "Authorization": f"{NEWAPI_ADMIN_KEY}",
                             "New-Api-User": "1"
                         }
                     )
@@ -416,9 +417,10 @@ class MeowClient(discord.Client):
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.get(
-                        f"{NEWAPI_URL.rstrip('/')}/api/user/",
+                        f"{NEWAPI_URL.rstrip('/')}/api/user/search",
+                        params={"keyword": username},
                         headers={
-                            "Authorization": f"Bearer {NEWAPI_ADMIN_KEY}",
+                            "Authorization": f"{NEWAPI_ADMIN_KEY}",
                             "New-Api-User": "1"
                         }
                     )
