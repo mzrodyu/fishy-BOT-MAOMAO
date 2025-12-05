@@ -338,23 +338,31 @@ class MeowClient(discord.Client):
                             "New-Api-User": "1"
                         }
                     )
-                    data = resp.json()
-                    if resp.status_code == 200 and data.get("success"):
-                        users = data.get("data", [])
-                        if users:
-                            user = users[0]
-                            info = f"""📋 **账号信息**
+                    print(f"[账号查询] 状态码: {resp.status_code}, 响应: {resp.text[:500]}")
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("success"):
+                            users = data.get("data", [])
+                            if users:
+                                user = users[0]
+                                info = f"""📋 **账号信息**
 👤 用户名：`{user.get('username', 'N/A')}`
 📛 昵称：{user.get('display_name', 'N/A')}
 💰 余额：**${user.get('quota', 0) / 500000:.4f}**
 🎫 已用：${user.get('used_quota', 0) / 500000:.4f}
 📊 状态：{'✅ 正常' if user.get('status') == 1 else '❌ 禁用'}
 """
-                            await interaction.followup.send(info, ephemeral=True)
+                                await interaction.followup.send(info, ephemeral=True)
+                                return
+                            await interaction.followup.send("❌ 未找到用户", ephemeral=True)
                             return
-                    await interaction.followup.send("❌ 查询失败", ephemeral=True)
+                        await interaction.followup.send(f"❌ {data.get('message', '查询失败')}", ephemeral=True)
+                    else:
+                        await interaction.followup.send(f"❌ HTTP {resp.status_code}", ephemeral=True)
             except Exception as e:
-                await interaction.followup.send(f"❌ 请求失败: {e}", ephemeral=True)
+                import traceback
+                print(f"[账号查询错误] {traceback.format_exc()}")
+                await interaction.followup.send(f"❌ 请求失败: {type(e).__name__}: {e}", ephemeral=True)
             return
             
             result = await newapi_get_user_info(token)
