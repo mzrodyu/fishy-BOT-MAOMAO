@@ -312,12 +312,46 @@ class MeowClient(discord.Client):
         # 账号命令
         @self.tree.command(name="账号", description="查看你的 New API 账号信息")
         async def cmd_account(interaction: discord.Interaction):
-            token = user_tokens.get(str(interaction.user.id))
-            if not token:
-                await interaction.response.send_message("❌ 请先使用 /登录 命令登录", ephemeral=True)
+            discord_id = str(interaction.user.id)
+            
+            # 检查是否已绑定
+            binding = await check_user_bindng(discord_id)
+            if not binding.get("exists"):
+                await interaction.response.send_message("❌ 你还没有注册账号，请使用 /注册 命令", ephemeral=True)
                 return
             
             await interaction.response.defer(ephemeral=True)
+            
+            # 使用管理员 Key 查询用户信息
+            username = binding["user"]["newapi_username"]
+            try:
+                async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
+                    resp = await http.get(
+                        f"{NEWAPI_URL.rstrip('/')}/api/user/search?keyword={username}",
+                        headers={
+                            "Authorization": f"Bearer {NEWAPI_ADMIN_KEY}",
+                            "New-Api-User": "1"
+                        }
+                    )
+                    data = resp.json()
+                    if resp.status_code == 200 and data.get("success"):
+                        users = data.get("data", [])
+                        if users:
+                            user = users[0]
+                            info = f"""📋 **账号信息**
+👤 用户名：`{user.get('username', 'N/A')}`
+📛 昵称：{user.get('display_name', 'N/A')}
+💰 余额：**${user.get('quota', 0) / 500000:.4f}**
+🎫 已用：${user.get('used_quota', 0) / 500000:.4f}
+📊 状态：{'✅ 正常' if user.get('status') == 1 else '❌ 禁用'}
+"""
+                            await interaction.followup.send(info, ephemeral=True)
+                            return
+                    await interaction.followup.send("❌ 查询失败", ephemeral=True)
+            except Exception as e:
+                await interaction.followup.send(f"❌ 请求失败: {e}", ephemeral=True)
+            return
+            
             result = await newapi_get_user_info(token)
             if result["success"]:
                 data = result["data"]
@@ -340,25 +374,44 @@ class MeowClient(discord.Client):
         # 余额命令
         @self.tree.command(name="余额", description="查看你的 New API 余额")
         async def cmd_balance(interaction: discord.Interaction):
-            token = user_tokens.get(str(interaction.user.id))
-            if not token:
-                await interaction.response.send_message("❌ 请先使用 /登录 命令登录", ephemeral=True)
+            discord_id = str(interaction.user.id)
+            
+            # 检查是否已绑定
+            binding = await check_user_bindng(discord_id)
+            if not binding.get("exists"):
+                await interaction.response.send_message("❌ 你还没有注册账号，请使用 /注册 命令", ephemeral=True)
                 return
             
             await interaction.response.defer(ephemeral=True)
-            result = await newapi_get_user_info(token)
-            if result["success"]:
-                data = result["data"]
-                quota = data.get('quota', 0) / 500000
-                used = data.get('used_quota', 0) / 500000
-                await interaction.followup.send(
-                    f"💰 **余额查询**\n"
-                    f"可用余额：**${quota:.4f}**\n"
-                    f"已使用：${used:.4f}",
-                    ephemeral=True
-                )
-            else:
-                await interaction.followup.send(f"❌ {result['message']}", ephemeral=True)
+            
+            # 使用管理员 Key 查询用户信息
+            username = binding["user"]["newapi_username"]
+            try:
+                async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
+                    resp = await http.get(
+                        f"{NEWAPI_URL.rstrip('/')}/api/user/search?keyword={username}",
+                        headers={
+                            "Authorization": f"Bearer {NEWAPI_ADMIN_KEY}",
+                            "New-Api-User": "1"
+                        }
+                    )
+                    data = resp.json()
+                    if resp.status_code == 200 and data.get("success"):
+                        users = data.get("data", [])
+                        if users:
+                            user = users[0]
+                            quota = user.get('quota', 0) / 500000
+                            used = user.get('used_quota', 0) / 500000
+                            await interaction.followup.send(
+                                f"💰 **余额查询**\n"
+                                f"可用余额：**${quota:.4f}**\n"
+                                f"已使用：${used:.4f}",
+                                ephemeral=True
+                            )
+                            return
+                    await interaction.followup.send("❌ 查询失败", ephemeral=True)
+            except Exception as e:
+                await interaction.followup.send(f"❌ 请求失败: {e}", ephemeral=True)
 
         # 令牌/Key 命令
         @self.tree.command(name="令牌", description="查看你的 API Key")
