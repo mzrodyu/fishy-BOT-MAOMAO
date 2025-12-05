@@ -270,13 +270,54 @@ class MeowClient(discord.Client):
             if result["success"]:
                 # 保存绑定关系到后端
                 await save_user_binding(discord_id, discord_name, username)
-                await interaction.followup.send(
-                    f"✅ 注册成功！\n"
-                    f"🔑 用户名：`{username}`\n"
-                    f"🔐 密码：`{密码}`\n\n"
-                    f"现在可以使用 /登录 命令登录了",
-                    ephemeral=True
-                )
+                
+                # 获取新用户的 ID 并创建默认 Key
+                user_id = await get_newapi_user_id(username)
+                api_key = ""
+                if user_id:
+                    try:
+                        async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
+                            resp = await http.post(
+                                f"{NEWAPI_URL.rstrip('/')}/api/token/",
+                                json={
+                                    "name": f"{username}_default",
+                                    "user_id": user_id,
+                                    "remain_quota": 0,
+                                    "unlimited_quota": True
+                                },
+                                headers={
+                                    "Authorization": f"{NEWAPI_ADMIN_KEY}",
+                                    "New-Api-User": str(user_id)  # 用用户自己的ID
+                                }
+                            )
+                            data = resp.json()
+                            print(f"[注册创建Key] user_id={user_id}, 响应: {data}")
+                            if data.get("success"):
+                                api_key = data.get("data", "")
+                                if isinstance(api_key, dict):
+                                    api_key = api_key.get("key", "")
+                                if api_key and not api_key.startswith("sk-"):
+                                    api_key = f"sk-{api_key}"
+                    except Exception as e:
+                        print(f"[注册创建Key] 错误: {e}")
+                
+                if api_key:
+                    await interaction.followup.send(
+                        f"✅ 注册成功！\n\n"
+                        f"� 用户名：`{username}`\n"
+                        f"🔐 密码：`{密码}`\n\n"
+                        f"� **你的 API Key**：\n```\n{api_key}\n```\n"
+                        f"⚠️ 请妥善保管！",
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.followup.send(
+                        f"✅ 注册成功！\n"
+                        f"👤 用户名：`{username}`\n"
+                        f"🔐 密码：`{密码}`\n\n"
+                        f"使用 `/创建令牌 名称` 来创建 API Key",
+                        ephemeral=True
+                    )
             else:
                 await interaction.followup.send(f"❌ {result['message']}", ephemeral=True)
 
@@ -583,7 +624,7 @@ class MeowClient(discord.Client):
                         },
                         headers={
                             "Authorization": f"{NEWAPI_ADMIN_KEY}",
-                            "New-Api-User": "1"
+                            "New-Api-User": str(user_id)  # 用用户自己的ID
                         }
                     )
                     data = resp.json()
