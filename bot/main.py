@@ -277,25 +277,46 @@ class MeowClient(discord.Client):
                 if user_id:
                     try:
                         async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
-                            # 不带 New-Api-User 头，只传 user_id 参数
+                            # 1. 先创建令牌（归属管理员）
                             resp = await http.post(
                                 f"{NEWAPI_URL.rstrip('/')}/api/token/",
                                 json={
                                     "name": f"{username}_default",
-                                    "user_id": user_id,
                                     "remain_quota": 0,
                                     "unlimited_quota": True
                                 },
                                 headers={
-                                    "Authorization": f"{NEWAPI_ADMIN_KEY}"
+                                    "Authorization": f"{NEWAPI_ADMIN_KEY}",
+                                    "New-Api-User": "1"
                                 }
                             )
                             data = resp.json()
-                            print(f"[注册创建Key] user_id={user_id}, 响应: {data}")
+                            print(f"[注册创建Key] 创建响应: {data}")
+                            
                             if data.get("success"):
-                                api_key = data.get("data", "")
-                                if isinstance(api_key, dict):
-                                    api_key = api_key.get("key", "")
+                                token_data = data.get("data", {})
+                                if isinstance(token_data, dict):
+                                    token_id = token_data.get("id")
+                                    api_key = token_data.get("key", "")
+                                else:
+                                    api_key = str(token_data)
+                                    token_id = None
+                                
+                                # 2. 修改令牌归属用户
+                                if token_id:
+                                    resp2 = await http.put(
+                                        f"{NEWAPI_URL.rstrip('/')}/api/token/",
+                                        json={
+                                            "id": token_id,
+                                            "user_id": user_id
+                                        },
+                                        headers={
+                                            "Authorization": f"{NEWAPI_ADMIN_KEY}",
+                                            "New-Api-User": "1"
+                                        }
+                                    )
+                                    print(f"[注册创建Key] 修改归属响应: {resp2.json()}")
+                                
                                 if api_key and not api_key.startswith("sk-"):
                                     api_key = f"sk-{api_key}"
                     except Exception as e:
