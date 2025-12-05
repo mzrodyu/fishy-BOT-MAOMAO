@@ -235,8 +235,13 @@ class MeowClient(discord.Client):
         
         # 注册命令（用户自己注册）
         @self.tree.command(name="注册", description="注册你的 New API 账号")
-        @app_commands.describe(密码="设置你的密码（至少8位）")
-        async def cmd_register(interaction: discord.Interaction, 密码: str):
+        @app_commands.describe(用户名="设置你的用户名（英文字母和数字）", 密码="设置你的密码（至少8位）")
+        async def cmd_register(interaction: discord.Interaction, 用户名: str, 密码: str):
+            # 检查用户名
+            if len(用户名) < 3 or len(用户名) > 20:
+                await interaction.response.send_message("❌ 用户名需要3-20个字符", ephemeral=True)
+                return
+            
             # 检查密码长度
             if len(密码) < 8:
                 await interaction.response.send_message("❌ 密码至少需要8位", ephemeral=True)
@@ -252,13 +257,13 @@ class MeowClient(discord.Client):
             if binding.get("exists"):
                 existing = binding.get("user", {})
                 await interaction.followup.send(
-                    f"❌ 你已经注册过了！\n账号：`{existing.get('newapi_username', '未知')}`\n\n请使用 /登录 命令登录",
+                    f"❌ 你已经注册过了！\n账号：`{existing.get('newapi_username', '未知')}`",
                     ephemeral=True
                 )
                 return
             
-            # 使用 Discord ID 后8位作为用户名
-            username = f"dc{discord_id[-8:]}"
+            # 使用用户自定义的用户名
+            username = 用户名
             
             # 在 New API 注册
             result = await newapi_register(username, 密码, discord_name)
