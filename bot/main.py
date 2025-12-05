@@ -521,10 +521,13 @@ class MeowClient(discord.Client):
                         print(f"[令牌] 总数: {len(all_tokens)}, 用户令牌: {len(tokens)}, 令牌user_ids: {token_user_ids}")
                         
                         if not tokens:
+                            # 显示前几个令牌的 user_id 帮助调试
+                            sample_ids = [t.get("user_id") for t in all_tokens[:5]]
                             await interaction.followup.send(
                                 f"📭 你还没有 API Key\n\n"
                                 f"使用 `/创建令牌 名称` 来创建一个！\n\n"
-                                f"🔍 调试: user_id={user_id}, 总令牌={len(all_tokens)}",
+                                f"🔍 调试: 你的user_id={user_id}, 总令牌={len(all_tokens)}\n"
+                                f"📋 令牌user_ids: {sample_ids}",
                                 ephemeral=True
                             )
                             return
