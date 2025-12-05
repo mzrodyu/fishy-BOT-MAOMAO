@@ -333,7 +333,7 @@ class MeowClient(discord.Client):
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     # 获取所有用户然后筛选
                     resp = await http.get(
-                        f"{NEWAPI_URL.rstrip('/')}/api/user/?keyword={username}",
+                        f"{NEWAPI_URL.rstrip('/')}/api/user/",
                         headers={
                             "Authorization": f"Bearer {NEWAPI_ADMIN_KEY}",
                             "New-Api-User": "1"
@@ -416,7 +416,7 @@ class MeowClient(discord.Client):
             try:
                 async with httpx.AsyncClient(timeout=30, verify=NEWAPI_VERIFY_SSL) as http:
                     resp = await http.get(
-                        f"{NEWAPI_URL.rstrip('/')}/api/user/?keyword={username}",
+                        f"{NEWAPI_URL.rstrip('/')}/api/user/",
                         headers={
                             "Authorization": f"Bearer {NEWAPI_ADMIN_KEY}",
                             "New-Api-User": "1"
@@ -425,10 +425,16 @@ class MeowClient(discord.Client):
                     if resp.status_code == 200:
                         data = resp.json()
                         if data.get("success"):
-                            users = data.get("data", [])
+                            raw_data = data.get("data")
+                            if isinstance(raw_data, dict):
+                                users = raw_data.get("data", [])
+                            elif isinstance(raw_data, list):
+                                users = raw_data
+                            else:
+                                users = []
                             user = None
                             for u in users:
-                                if u.get("username") == username:
+                                if isinstance(u, dict) and u.get("username") == username:
                                     user = u
                                     break
                             if user:
